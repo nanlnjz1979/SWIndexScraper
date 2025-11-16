@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>网页数据导出器</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            width: 350px;
+            padding: 20px;
+            margin: 0;
+            background-color: #f8f9fa;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        h1 {
+            font-size: 18px;
+            margin: 0 0 15px 0;
+            color: #333;
+            text-align: center;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        label {
+            font-size: 14px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4285f4;
+            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1);
+        }
+        
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        
+        .btn-primary {
+            background-color: #4285f4;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background-color: #3367d6;
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background-color: #5f6368;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #4d5156;
+            transform: translateY(-1px);
+        }
+        
+        .btn-success {
+            background-color: #34a853;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background-color: #2d8e47;
+            transform: translateY(-1px);
+        }
+        
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 14px;
+            min-height: 20px;
+            background-color: #e8f0fe;
+            color: #1a73e8;
+            border-left: 4px solid #4285f4;
+        }
+        
+        .status.success {
+            background-color: #e6f4ea;
+            color: #188038;
+            border-left-color: #34a853;
+        }
+        
+        .status.error {
+            background-color: #fce8e6;
+            color: #d93025;
+            border-left-color: #ea4335;
+        }
+        
+        .status.loading {
+            background-color: #fff8e1;
+            color: #f57c00;
+            border-left-color: #fbbc05;
+        }
+        
+        .separator {
+            height: 1px;
+            background-color: #e0e0e0;
+            margin: 10px 0;
+        }
+        
+        .hint {
+            font-size: 12px;
+            color: #666;
+            text-align: center;
+            margin-top: 10px;
+        }
+        
+        .filename-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .filename-group input {
+            flex: 1;
+        }
+        
+        .filename-group span {
+            font-size: 12px;
+            color: #666;
+            min-width: 40px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>网页数据导出器</h1>
+        
+        <div class="input-group">
+            <label for="urlInput">输入URL</label>
+            <input type="text" id="urlInput" placeholder="https://example.com" value="">
+        </div>
+        
+        <div class="button-group">
+            <button id="openUrlBtn" class="btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/>
+                </svg>
+                打开URL
+            </button>
+        </div>
+        
+        <div class="separator"></div>
+        
+        <div class="button-group">
+            <button id="extractDataBtn" class="btn-secondary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M10 16v-6h4v6h5v-8h3L12 3 2 8h3v8z"/>
+                </svg>
+                提取当前页面数据
+            </button>
+            
+            <div class="input-group">
+                <label for="filenameInput">导出文件名</label>
+                <div class="filename-group">
+                    <input type="text" id="filenameInput" placeholder="export" value="export">
+                    <span>.csv</span>
+                </div>
+            </div>
+            
+            <button id="exportCsvBtn" class="btn-success" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/>
+                </svg>
+                导出为CSV
+            </button>
+        </div>
+        
+        <div id="status" class="status">准备就绪</div>
+        
+        <div class="hint">
+            提示：插件会自动提取页面中的表格、列表或段落数据
+        </div>
+    </div>
+    
+    <script src="popup.js"></script>
+</body>
+</html>
