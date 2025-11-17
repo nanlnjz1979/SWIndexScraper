@@ -1,5 +1,12 @@
 // 后台脚本，处理扩展的主要功能
 
+// 行业代码列表
+const industryCodes = ["851243.SI", "851281.SI", "851282.SI", "851242.SI", "851312.SI", "851314.SI", "851315.SI", "851316.SI", "851325.SI", "851326.SI", "851329.SI", "851331.SI", "851412.SI", "851413.SI", "851422.SI", "851423.SI", "851424.SI", "851425.SI", "851436.SI", "851437.SI", "851438.SI", "851439.SI", "851491.SI", "851452.SI", "851511.SI", "851512.SI", "851521.SI", "851522.SI", "851523.SI", "851524.SI", "851542.SI", "851543.SI", "851532.SI", "851533.SI", "851534.SI", "851563.SI", "851564.SI", "851611.SI", "851612.SI", "851614.SI", "851616.SI", "851617.SI", "851610.SI", "851631.SI", "851782.SI", "851783.SI", "851784.SI", "851785.SI", "851786.SI", "851787.SI", "851731.SI", "851721.SI", "851771.SI", "851741.SI", "851761.SI", "851711.SI", "851811.SI", "851812.SI", "851813.SI", "851831.SI", "852021.SI", "852031.SI", "852032.SI", "852033.SI", "852034.SI", "852041.SI", "852062.SI", "852063.SI", "852182.SI", "852183.SI", "852121.SI", "852111.SI", "852112.SI", "852131.SI", "859852.SI", "857821.SI", "857831.SI", "857841.SI", "857851.SI", "851931.SI", "851941.SI", "851922.SI", "851927.SI", "852311.SI", "857111.SI", "857112.SI", "857121.SI", "857122.SI", "850615.SI", "850616.SI", "850614.SI", "850623.SI", "857221.SI", "857236.SI", "857251.SI", "857241.SI", "857242.SI", "857243.SI", "857244.SI", "857261.SI", "850741.SI", "857334.SI", "857336.SI", "857352.SI", "857354.SI", "857355.SI", "857362.SI", "857371.SI", "857372.SI", "857373.SI", "857375.SI", "857381.SI", "857382.SI", "857321.SI", "857323.SI", "857344.SI", "850711.SI", "850713.SI", "850715.SI", "850716.SI", "850731.SI", "850751.SI", "850725.SI", "850728.SI", "850721.SI", "850726.SI", "850727.SI", "850936.SI", "850771.SI", "850772.SI", "850781.SI", "850782.SI", "850783.SI", "850784.SI", "857411.SI", "857421.SI", "857431.SI", "850935.SI", "857451.SI", "850702.SI", "850703.SI", "852226.SI", "851041.SI", "851042.SI", "857641.SI", "857651.SI", "857661.SI", "857674.SI", "857691.SI", "857692.SI", "859951.SI", "852213.SI", "852214.SI", "851024.SI", "851025.SI", "851026.SI", "851027.SI", "859511.SI", "859512.SI", "859521.SI", "859621.SI", "859622.SI", "859631.SI", "859632.SI", "859633.SI", "859711.SI", "859712.SI", "859713.SI", "859714.SI", "859721.SI", "859811.SI", "859821.SI", "859822.SI"];
+//const industryCodes = [ "850935.SI", "857451.SI", "850702.SI", "850703.SI", "852226.SI", "851041.SI", "851042.SI", "857641.SI", "857651.SI", "857661.SI", "857674.SI", "857691.SI", "857692.SI", "859951.SI", "852213.SI", "852214.SI", "851024.SI", "851025.SI", "851026.SI", "851027.SI", "859511.SI", "859512.SI", "859521.SI", "859621.SI", "859622.SI", "859631.SI", "859632.SI", "859633.SI", "859711.SI", "859712.SI", "859713.SI", "859714.SI", "859721.SI", "859811.SI", "859821.SI", "859822.SI"];
+//const industryCodes = ["851243.SI", "851281.SI", "851282.SI", "851242.SI", "851312.SI", "851314.SI", "851315.SI", "851316.SI", "851325.SI", "851326.SI", "851329.SI", "851331.SI"]
+// URL模板
+const urlTemplate = 'https://legulegu.com/api/stockdata/sw-industry-2021?industryCode={code}&token=167ad0956978cc482fe2edd0cb3dabd7';
+
 // 向popup.js发送状态更新消息
 function sendStatusUpdate(message, type = '') {
   try {
@@ -11,6 +18,115 @@ function sendStatusUpdate(message, type = '') {
   } catch (error) {
     console.error('发送状态更新失败:', error);
   }
+}
+
+// 从URL中提取industryCode并生成文件名
+function generateFilenameFromUrl(url) {
+  // 从URL中提取industryCode参数
+  const match = url.match(/industryCode=([^&]+)/);
+  if (match && match[1]) {
+    return `${match[1]}.csv`;
+  }
+  // 如果无法提取，则使用默认命名方式
+  const timestamp = new Date().getTime();
+  return `data_${timestamp}.csv`;
+}
+
+// 处理URL列表中的所有URL
+function processUrlList() {
+  sendStatusUpdate('开始处理行业代码列表，共 ' + industryCodes.length + ' 个行业代码', 'loading');
+  
+  // 逐个处理行业代码
+  let currentIndex = 0;
+  let processingTabId = null;
+  
+  function processNextUrl() {
+    if (currentIndex >= industryCodes.length) {
+      sendStatusUpdate('行业代码列表处理完成', 'success');
+      // 完成后关闭处理标签页
+      if (processingTabId) {
+        chrome.tabs.remove(processingTabId);
+        processingTabId = null;
+      }
+      return;
+    }
+    
+    const code = industryCodes[currentIndex];
+    const url = urlTemplate.replace('{code}', code);
+    currentIndex++;
+    
+    sendStatusUpdate(`正在处理第 ${currentIndex} 个行业代码: ${code}`, 'loading');
+    
+    // 定义标签页更新后的数据处理函数
+    const handleTabUpdated = (tabId, info) => {
+      if (tabId === processingTabId && info.status === 'complete') {
+        // 移除监听器，避免重复处理
+        chrome.tabs.onUpdated.removeListener(handleTabUpdated);
+        
+        // 延迟一点时间确保页面完全渲染
+        setTimeout(() => {
+          sendStatusUpdate('页面加载完成，正在提取数据...', 'loading');
+          
+          // 提取数据
+          chrome.scripting.executeScript({
+            target: { tabId: tabId },
+            func: extractDataFromPage
+          }, (results) => {
+            if (results && results[0]) {
+              const data = results[0].result;
+              sendStatusUpdate('数据提取成功，正在下载...', 'loading');
+              
+              // 使用URL中的industryCode生成文件名并导出CSV
+              const filename = generateFilenameFromUrl(url);
+              exportToCsv(data, filename, (response) => {
+                if (response.success) {
+                  sendStatusUpdate(`第 ${currentIndex} 个行业代码数据下载成功: ${filename}`, 'success');
+                  // 延迟处理下一个行业代码，添加1-5秒的随机延迟避免请求过于频繁
+                  const randomDelay = Math.floor(Math.random() * 4000) + 1000; // 1000-5000毫秒
+                  console.log(`随机暂停 ${randomDelay/1000} 秒后处理下一个URL`);
+                  setTimeout(processNextUrl, randomDelay);
+                } else {
+                  sendStatusUpdate(`第 ${currentIndex} 个行业代码数据下载失败: ${response.message}`, 'error');
+                  // 即使失败也继续处理下一个行业代码，添加1-5秒的随机延迟
+                  const randomDelay = Math.floor(Math.random() * 4000) + 1000; // 1000-5000毫秒
+                  console.log(`随机暂停 ${randomDelay/1000} 秒后处理下一个URL`);
+                  setTimeout(processNextUrl, randomDelay);
+                }
+              });
+            } else {
+              sendStatusUpdate(`第 ${currentIndex} 个行业代码数据提取失败`, 'error');
+              // 即使失败也继续处理下一个行业代码，添加1-5秒的随机延迟
+              const randomDelay = Math.floor(Math.random() * 4000) + 1000; // 1000-5000毫秒
+              console.log(`随机暂停 ${randomDelay/1000} 秒后处理下一个URL`);
+              setTimeout(processNextUrl, randomDelay);
+            }
+          });
+        }, 1000);
+      }
+    };
+
+    // 如果已有处理标签页，则更新URL，否则创建新标签页
+    if (processingTabId) {
+      // 更新现有标签页的URL
+      chrome.tabs.update(processingTabId, { url: url }, () => {
+        // 监听标签页更新事件
+        chrome.tabs.onUpdated.addListener(handleTabUpdated);
+      });
+    } else {
+      // 打开URL
+      chrome.tabs.create({
+        url: url,
+        active: true
+      }, (tab) => {
+        processingTabId = tab.id;
+        // 监听页面加载完成事件
+        chrome.tabs.onUpdated.addListener(handleTabUpdated);
+      });
+    }
+  }
+  
+  // 开始处理第一个行业代码
+  processNextUrl();
 }
 
 // 监听来自popup.js的消息
@@ -94,6 +210,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       exportToCsv(message.data, message.filename || 'export.csv', sendResponse);
       
       // 返回true以保持消息通道开放，等待异步下载操作完成
+      return true;
+      
+    case 'processUrlList':
+      // 处理URL列表
+      sendStatusUpdate('收到处理URL列表的请求', 'loading');
+      processUrlList();
+      sendResponse({ success: true, message: 'URL列表处理已开始' });
       return true;
       
     case 'extractPageData':
@@ -547,11 +670,12 @@ function exportToCsv(data, filename, callback) {
             const dataUrl = event.target.result;
             sendStatusUpdate('正在开始下载...', 'loading');
             
-            // 使用chrome.downloads API下载文件
+            // 使用chrome.downloads API直接下载文件，不显示保存对话框
             chrome.downloads.download({
               url: dataUrl,
               filename: filename,
-              saveAs: true
+              saveAs: false,
+              conflictAction: 'overwrite' // 遇到同名文件时直接覆盖
             }, (downloadId) => {
               try {
                 if (chrome.runtime.lastError) {

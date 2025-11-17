@@ -9,6 +9,7 @@ const openUrlBtn = document.getElementById('openUrlBtn');
 const extractDataBtn = document.getElementById('extractDataBtn');
 const filenameInput = document.getElementById('filenameInput');
 const exportCsvBtn = document.getElementById('exportCsvBtn');
+const processUrlListBtn = document.getElementById('processUrlListBtn');
 const statusDiv = document.getElementById('status');
 
 // 初始化
@@ -17,6 +18,11 @@ function init() {
     openUrlBtn.addEventListener('click', handleOpenUrl);
     extractDataBtn.addEventListener('click', handleExtractData);
     exportCsvBtn.addEventListener('click', handleExportCsv);
+    
+    // 如果processUrlListBtn存在，则添加事件监听器
+    if (processUrlListBtn) {
+        processUrlListBtn.addEventListener('click', handleProcessUrlList);
+    }
     
     // 添加消息监听器，接收来自background.js的状态更新
     chrome.runtime.onMessage.addListener((message) => {
@@ -32,6 +38,28 @@ function init() {
     filenameInput.addEventListener('input', () => {
         exportCsvBtn.disabled = !extractedData || !filenameInput.value.trim();
     });
+}
+
+// 处理URL列表处理按钮点击
+function handleProcessUrlList() {
+    updateStatus('开始处理URL列表...', 'loading');
+    
+    chrome.runtime.sendMessage(
+        { action: 'processUrlList' },
+        (response) => {
+            if (chrome.runtime.lastError) {
+                updateStatus('操作失败: ' + chrome.runtime.lastError.message, 'error');
+                console.error('消息发送错误:', chrome.runtime.lastError);
+                return;
+            }
+            
+            if (response && response.success) {
+                updateStatus(response.message, 'success');
+            } else {
+                updateStatus('无法启动URL列表处理: ' + (response?.message || '未知错误'), 'error');
+            }
+        }
+    );
 }
 
 // 处理打开URL按钮点击
