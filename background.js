@@ -5,7 +5,42 @@ const industryCodes = ["851243.SI", "851281.SI", "851282.SI", "851242.SI", "8513
 //const industryCodes = [ "850935.SI", "857451.SI", "850702.SI", "850703.SI", "852226.SI", "851041.SI", "851042.SI", "857641.SI", "857651.SI", "857661.SI", "857674.SI", "857691.SI", "857692.SI", "859951.SI", "852213.SI", "852214.SI", "851024.SI", "851025.SI", "851026.SI", "851027.SI", "859511.SI", "859512.SI", "859521.SI", "859621.SI", "859622.SI", "859631.SI", "859632.SI", "859633.SI", "859711.SI", "859712.SI", "859713.SI", "859714.SI", "859721.SI", "859811.SI", "859821.SI", "859822.SI"];
 //const industryCodes = ["851243.SI", "851281.SI", "851282.SI", "851242.SI", "851312.SI", "851314.SI", "851315.SI", "851316.SI", "851325.SI", "851326.SI", "851329.SI", "851331.SI"]
 // URL模板
-const urlTemplate = 'https://legulegu.com/api/stockdata/sw-industry-2021?industryCode={code}&token=167ad0956978cc482fe2edd0cb3dabd7';
+const urlTemplate = 'https://legulegu.com/api/stockdata/sw-industry-2021?industryCode={code}&token=ffb7751159920168dba8494ed7436e0a';
+
+// 将时间戳转换为ISO格式（带6位小数）
+function convertTimestampToISO(timestamp) {
+  // 检查是否是有效的时间戳数字字符串
+  if (typeof timestamp === 'string' && !isNaN(timestamp) && timestamp.length >= 10) {
+    const numTimestamp = parseInt(timestamp, 10);
+    // 检查是否是毫秒时间戳（13位）或秒时间戳（10位）
+    const msTimestamp = timestamp.length === 13 ? numTimestamp : numTimestamp * 1000;
+    
+    // 创建Date对象
+    const date = new Date(msTimestamp);
+    // 确保是有效的日期
+    if (!isNaN(date.getTime())) {
+      // 获取标准ISO字符串
+      let isoString = date.toISOString();
+      
+      // 确保毫秒部分有6位小数
+      // 标准ISO格式是YYYY-MM-DDTHH:mm:ss.sssZ，我们需要将.sss扩展为.ssssss
+      if (isoString.includes('.')) {
+        const parts = isoString.split('.');
+        // 第一部分是日期时间，第二部分是毫秒+Z
+        const millisecondPart = parts[1].replace('Z', '');
+        // 确保毫秒部分有6位，不足的补0
+        const paddedMilliseconds = millisecondPart.padEnd(6, '0');
+        // 重新组合成完整的ISO字符串
+        return `${parts[0]}.${paddedMilliseconds}Z`;
+      } else {
+        // 如果没有毫秒部分，添加.000000Z
+        return isoString.replace('Z', '.000000Z');
+      }
+    }
+  }
+  // 如果不是有效的时间戳，返回原始值
+  return timestamp;
+}
 
 // 向popup.js发送状态更新消息
 function sendStatusUpdate(message, type = '') {
@@ -551,7 +586,7 @@ function exportToCsv(data, filename, callback) {
       // 处理不同类型的数据
       if (item.type === 'table' && item.rows && Array.isArray(item.rows)) {
         // 添加表格标题
-        csvContent += `\n=== 表格 ${item.tableIndex || 1} ===\n`;
+        //csvContent += `\n=== 表格 ${item.tableIndex || 1} ===\n`;
         
         // 添加表头
         if (item.headers && Array.isArray(item.headers)) {
@@ -562,16 +597,26 @@ function exportToCsv(data, filename, callback) {
         item.rows.forEach(row => {
           if (item.headers && Array.isArray(item.headers)) {
             const rowValues = item.headers.map(header => {
-              const value = row[header] || '';
-              return `"${value.replace(/"/g, '""')}"`;
+                let value = row[header] || '';
+                // 检查是否需要转换时间戳
+                if (header.toLowerCase().includes('date') || 
+                    (typeof value === 'string' && /^\d{10,13}$/.test(value))) {
+                  value = convertTimestampToISO(value);
+                }
+                return `"${value.replace(/"/g, '""')}"`;
             });
             csvContent += rowValues.join(',') + '\n';
           } else if (typeof row === 'object' && row !== null) {
             // 如果没有headers但row是对象，则使用对象的所有键
             const keys = Object.keys(row);
             const rowValues = keys.map(key => {
-              const value = row[key] || '';
-              return `"${value.replace(/"/g, '""')}"`;
+                let value = row[key] || '';
+                // 检查是否需要转换时间戳
+                if (key.toLowerCase().includes('date') || 
+                    (typeof value === 'string' && /^\d{10,13}$/.test(value))) {
+                  value = convertTimestampToISO(value);
+                }
+                return `"${value.replace(/"/g, '""')}"`;
             });
             csvContent += rowValues.join(',') + '\n';
           }
@@ -597,8 +642,13 @@ function exportToCsv(data, filename, callback) {
         item.items.forEach(row => {
           if (typeof row === 'object' && row !== null) {
             const rowValues = headers.map(header => {
-              const value = row[header] || '';
-              return `"${value.replace(/"/g, '""')}"`;
+                let value = row[header] || '';
+                // 检查是否需要转换时间戳
+                if (header.toLowerCase().includes('date') || 
+                    (typeof value === 'string' && /^\d{10,13}$/.test(value))) {
+                  value = convertTimestampToISO(value);
+                }
+                return `"${value.replace(/"/g, '""')}"`;
             });
             csvContent += rowValues.join(',') + '\n';
           }
@@ -609,7 +659,15 @@ function exportToCsv(data, filename, callback) {
         item.rows.forEach(row => {
           if (typeof row === 'object' && row !== null) {
             const keys = Object.keys(row);
-            const values = keys.map(key => `"${(row[key] || '').replace(/"/g, '""')}"`);
+            const values = keys.map(key => {
+                let value = row[key] || '';
+                // 检查是否需要转换时间戳
+                if (key.toLowerCase().includes('date') || 
+                    (typeof value === 'string' && /^\d{10,13}$/.test(value))) {
+                  value = convertTimestampToISO(value);
+                }
+                return `"${value.replace(/"/g, '""')}"`;
+              });
             csvContent += values.join(',') + '\n';
           }
         });
